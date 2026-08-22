@@ -1,3 +1,4 @@
+Set-Content -Path "README.md" -Encoding utf8 -Value @'
 # 🛡️ ShieldFlow AI — Real-Time Payment Risk & Fraud Mitigation Engine
 
 [![ShieldFlow AI CI Pipeline](https://github.com/suhanikri/shieldflow-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/suhanikri/shieldflow-ai/actions/workflows/ci.yml)
@@ -34,57 +35,36 @@ ShieldFlow AI is an ultra-low latency, production-grade fraud detection gateway 
 
 ## 🛠️ Quickstart with Docker Compose
 
-### 1. Prerequisites
+**1. Prerequisites**
 * Docker Desktop installed and running.
 * Git
 
-### 2. Launch Stack
-```bash
-git clone [https://github.com/suhanikri/shieldflow-ai.git](https://github.com/suhanikri/shieldflow-ai.git)
-cd shieldflow-ai
-docker compose up --build -d
+**2. Launch Stack**
+> `git clone https://github.com/suhanikri/shieldflow-ai.git`  
+> `cd shieldflow-ai`  
+> `docker compose up --build -d`  
 
-### 3. Service Endpoints
-Analyst Operations Console: http://localhost:8501
+**3. Service Endpoints**
+* **Analyst Operations Console:** http://localhost:8501
+* **FastAPI Swagger Documentation:** http://localhost:8000/docs
+* **Prometheus Metrics:** http://localhost:8000/metrics
+* **Health Check:** http://localhost:8000/health
 
-FastAPI Swagger Documentation: http://localhost:8000/docs
+---
 
-Prometheus Metrics: http://localhost:8000/metrics
+## 🧪 Running Automated Tests
 
-Health Check: http://localhost:8000/health
+Run the test suite locally:
+> `pytest -v test_shieldflow.py`
 
-🧪 Running Automated Tests
-Run the test suite locally using pytest:
+---
 
-Bash
-pytest -v test_shieldflow.py
-📋 API Specification
-POST /webhook/razorpay
+## 📋 API Specification
+
+### POST /webhook/razorpay
+
 Ingests and verifies signed payment gateway webhooks.
 
-Headers:
-
-X-Razorpay-Signature: HMAC SHA-256 hex digest
-
-Sample Response:
-
-JSON
-{
-  "status": "processed",
-  "gateway_event": "payment.authorized",
-  "pipeline_tier": "Tier 2: Deep Agent Evaluator",
-  "mitigation_action": {
-    "action": "AUTO_REFUND_EXECUTED",
-    "payment_id": "pay_O9xK3B8Z11L",
-    "status": "processed"
-  },
-  "risk_verdict": {
-    "risk_score": 100,
-    "risk_tier": "BLOCK",
-    "detected_anomalies": [
-      "Disposable/High-risk email domain: tempmail.com",
-      "High-risk Proxy/TOR IP exit node detected: 185.220.101.5"
-    ]
-  },
-  "pipeline_latency_ms": "3.42"
-}
+* **Header:** `X-Razorpay-Signature` (HMAC SHA-256 hex digest)
+* **Risk Tiers:** `ALLOW`, `MANUAL_REVIEW`, `BLOCK`
+* **Features Inspected:** Velocity limits, disposable email detection, IP proxy/TOR identification, and address consistency.
