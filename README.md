@@ -12,19 +12,17 @@ ShieldFlow AI is an ultra-low latency, production-grade fraud detection gateway 
 ---
 
 ## 🏛️ System Architecture
+
 ```mermaid
 flowchart TD
-    WH[Payment Webhook: Razorpay / Stripe] --> GW[FastAPI Ingestion Gateway<br/>HMAC SHA-256 Auth]
-    GW --> DE[ShieldFlow Decision Engine]
-    
-    DE --> T1[Tier 1: Fast-Path Heuristics<br/>- Redis Velocity Limiting<br/>- Address Consistency<br/>- Sub-10ms Latency]
-    DE --> T2[Tier 2: Deep Agent Evaluator<br/>- Disposable Domain Check<br/>- IP Proxy / TOR Detection<br/>- Risk Scoring 0-100]
-    
-    T1 --> DB[(Audit Ledger SQL)]
+    WH["Payment Webhook (Razorpay / Stripe)"] --> GW["FastAPI Ingestion Gateway (HMAC Auth)"]
+    GW --> DE["ShieldFlow Decision Engine"]
+    DE --> T1["Tier 1: Fast-Path Heuristics (<10ms)"]
+    DE --> T2["Tier 2: Deep Agent Evaluator"]
+    T1 --> DB[("Audit Ledger SQL")]
     T2 --> DB
-    
-    DB --> PROM[Prometheus Telemetry<br/>/metrics]
-    DB --> HITL[Streamlit Ops Console<br/>Manual Review Desk]
+    DB --> PROM["Prometheus Telemetry (/metrics)"]
+    DB --> HITL["Streamlit Analyst Console"]
      ---
 
 ## 🚀 Key Features
