@@ -1,4 +1,3 @@
-Set-Content -Path "README.md" -Encoding utf8 -Value @'
 # 🛡️ ShieldFlow AI — Real-Time Payment Risk & Fraud Mitigation Engine
 
 [![ShieldFlow AI CI Pipeline](https://github.com/suhanikri/shieldflow-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/suhanikri/shieldflow-ai/actions/workflows/ci.yml)
