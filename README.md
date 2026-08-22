@@ -12,48 +12,19 @@ ShieldFlow AI is an ultra-low latency, production-grade fraud detection gateway 
 ---
 
 ## 🏛️ System Architecture
-+-----------------------+
-                              |   Payment Webhook     |
-                              |  (Razorpay / Stripe)  |
-                              +-----------+-----------+
-                                          |
-                                          v
-                          +-------------------------------+
-                          |  FastAPI Ingestion Gateway    |
-                          |  (HMAC SHA-256 Signature Auth)|
-                          +---------------+---------------+
-                                          |
-                                          v
-                     +----------------------------------------+
-                     |       ShieldFlow Decision Engine       |
-                     +--------------------+-------------------+
-                                          |
-                 +------------------------+------------------------+
-                 |                                                 |
-                 v                                                 v
-   +----------------------------+                    +----------------------------+
-   |   Tier 1: Fast-Path Rule   |                    |   Tier 2: Deep Agent Flow  |
-   | - Redis Velocity Limiting  |                    | - Disposable Domain Check  |
-   | - Address Mismatch Checks  |                    | - IP Proxy / TOR Check     |
-   | - Latency: < 10ms          |                    | - High-Risk COD Scoring    |
-   +--------------+-------------+                    +--------------+-------------+
-                  |                                                 |
-                  +-----------------------+-------------------------+
-                                          |
-                                          v
-                          +-------------------------------+
-                          | Persistent Audit Ledger (SQL) |
-                          +---------------+---------------+
-                                          |
-                    +---------------------+---------------------+
-                    |                                           |
-                    v                                           v
-     +-----------------------------+             +-----------------------------+
-     |  Prometheus Metrics (/metrics)|           |  Streamlit Operations Desk  |
-     |  - p95 Latency Histograms   |             |  - Real-time Visualizer     |
-     |  - Fraud Verdict Counters   |             |  - HITL Manual Review Queue |
-     +-----------------------------+             +-----------------------------+
-
+```mermaid
+flowchart TD
+    WH[Payment Webhook: Razorpay / Stripe] --> GW[FastAPI Ingestion Gateway<br/>HMAC SHA-256 Auth]
+    GW --> DE[ShieldFlow Decision Engine]
+    
+    DE --> T1[Tier 1: Fast-Path Heuristics<br/>- Redis Velocity Limiting<br/>- Address Consistency<br/>- Sub-10ms Latency]
+    DE --> T2[Tier 2: Deep Agent Evaluator<br/>- Disposable Domain Check<br/>- IP Proxy / TOR Detection<br/>- Risk Scoring 0-100]
+    
+    T1 --> DB[(Audit Ledger SQL)]
+    T2 --> DB
+    
+    DB --> PROM[Prometheus Telemetry<br/>/metrics]
+    DB --> HITL[Streamlit Ops Console<br/>Manual Review Desk]
      ---
 
 ## 🚀 Key Features
