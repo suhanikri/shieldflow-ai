@@ -94,8 +94,6 @@ docker compose up --build -d
 
 # Health Check: http://localhost:8000/health
 
-health
-
 ## 🧪 Running Automated Tests
 Run the test suite locally using pytest:
 
