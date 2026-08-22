@@ -13,72 +13,62 @@ ShieldFlow AI is an ultra-low latency, production-grade fraud detection gateway 
 
 ## 🏛️ System Architecture
 
-```mermaid
-flowchart TD
-    WH["Payment Webhook (Razorpay / Stripe)"] --> GW["FastAPI Ingestion Gateway (HMAC Auth)"]
-    GW --> DE["ShieldFlow Decision Engine"]
-    DE --> T1["Tier 1: Fast-Path Heuristics (<10ms)"]
-    DE --> T2["Tier 2: Deep Agent Evaluator"]
-    T1 --> DB[("Audit Ledger SQL")]
-    T2 --> DB
-    DB --> PROM["Prometheus Telemetry (/metrics)"]
-    DB --> HITL["Streamlit Analyst Console"]
-     ---
+* **Inbound Ingestion:** FastAPI gateway verifying Razorpay & Stripe webhooks via cryptographic HMAC SHA-256 signatures.
+* **Tier 1 (Fast-Path Rules):** Sub-10ms evaluation checking Redis sliding-window velocity limits, purchase frequency, and address consistency.
+* **Tier 2 (Deep Risk Intelligence):** Evaluates disposable email patterns, IP proxy/TOR exit nodes, and Cash-on-Delivery (COD) anomalies.
+* **Audit & Storage:** SQLite/SQLAlchemy persistent transaction ledger storing latencies, risk scores, and reasons.
+* **Observability & Ops:** Standard Prometheus `/metrics` telemetry alongside a Streamlit Human-in-the-Loop review console.
+
+---
 
 ## 🚀 Key Features
-Sub-10ms Fast-Path Heuristics: Evaluates velocity spikes, address consistency, and purchase history.
 
-Distributed Rate Limiting: Sliding-window rate limiting backed by Redis sorted sets.
+* **Sub-10ms Fast-Path Heuristics:** Evaluates velocity spikes, address consistency, and purchase history.
+* **Distributed Rate Limiting:** Sliding-window rate limiting backed by Redis sorted sets.
+* **Cryptographic Security:** End-to-end HMAC SHA-256 payload authentication.
+* **Human-in-the-Loop (HITL) Queue:** Streamlit operations desk allowing risk analysts to override flagged transactions with persistent audit logs.
+* **Observability:** Native Prometheus instrumentation streaming throughput, latency percentiles, and risk distributions.
+* **Multi-Container Architecture:** Production-ready orchestration with Docker and Docker Compose.
 
-Cryptographic Security: End-to-end HMAC SHA-256 payload authentication.
-
-Human-in-the-Loop (HITL) Queue: Streamlit operations desk allowing risk analysts to override flagged transactions with persistent audit logs.
-
-Observability: Native Prometheus instrumentation streaming throughput, latency percentiles, and risk distributions.
-
-Multi-Container Architecture: Production-ready orchestration with Docker and Docker Compose.
-
-.
+---
 
 ## 🛠️ Quickstart with Docker Compose
-1. Prerequisites
-Docker Desktop installed and running.
 
-Git
+### 1. Prerequisites
+* Docker Desktop installed and running.
+* Git
 
-2. Launch Stack
-Bash
+### 2. Launch Stack
+```bash
 git clone [https://github.com/suhanikri/shieldflow-ai.git](https://github.com/suhanikri/shieldflow-ai.git)
 cd shieldflow-ai
-
-# Build and start services in the background
 docker compose up --build -d
 
-## 3. Service Endpoints
-# Analyst Operations Console: http://localhost:8501
+### 3. Service Endpoints
+Analyst Operations Console: http://localhost:8501
 
-# FastAPI Swagger Documentation: http://localhost:8000/docs
+FastAPI Swagger Documentation: http://localhost:8000/docs
 
-# Prometheus Metrics: http://localhost:8000/metrics
+Prometheus Metrics: http://localhost:8000/metrics
 
-# Health Check: http://localhost:8000/health
+Health Check: http://localhost:8000/health
 
-## 🧪 Running Automated Tests
+🧪 Running Automated Tests
 Run the test suite locally using pytest:
 
 Bash
 pytest -v test_shieldflow.py
-
-## 📋 API Specification
+📋 API Specification
 POST /webhook/razorpay
 Ingests and verifies signed payment gateway webhooks.
 
 Headers:
-# X-Razorpay-Signature: HMAC SHA-256 hex digest
+
+X-Razorpay-Signature: HMAC SHA-256 hex digest
 
 Sample Response:
 
-# JSON
+JSON
 {
   "status": "processed",
   "gateway_event": "payment.authorized",
