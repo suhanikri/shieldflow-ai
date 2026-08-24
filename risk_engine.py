@@ -1,175 +1,106 @@
-﻿import os
-import json
-import time
-from collections import defaultdict
-from typing import Dict, List, Tuple, Any
-from schemas import (
-    TransactionPayload,
-    RiskAssessmentResult,
-    RiskTier,
-    FastPathVerdict,
-    FastPathResult,
-)
+﻿import time
+import numpy as np
+from typing import Dict, Any, List, Tuple
+from sklearn.ensemble import IsolationForest
 
-# Optional Redis Connection for Distributed Deployments
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
-redis_client = None
+class MLAnomalyDetector:
+    """Pre-trained unsupervised isolation forest for payment anomaly detection."""
+    def __init__(self):
+        # Synthetic baseline training on standard transaction behavior
+        np.random.seed(42)
+        # Features: [amount_scaled, velocity_count, order_history, is_cod]
+        normal_traffic = np.column_stack([
+            np.random.exponential(scale=1500, size=1000),  # typical amount
+            np.random.poisson(lam=1.2, size=1000),         # typical velocity
+            np.random.randint(1, 25, size=1000),          # typical history
+            np.random.choice([0, 1], p=[0.85, 0.15], size=1000) # COD flag
+        ])
+        self.model = IsolationForest(contamination=0.05, random_state=42)
+        self.model.fit(normal_traffic)
 
-try:
-    import redis
-    client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True, socket_connect_timeout=0.2)
-    client.ping()
-    redis_client = client
-except Exception:
-    redis_client = None
-
-# In-memory fallback
-LOCAL_VELOCITY_CACHE: Dict[str, List[float]] = defaultdict(list)
-VELOCITY_WINDOW_SECONDS = 60
-VELOCITY_THRESHOLD_COUNT = 3
-
-DISPOSABLE_DOMAINS = {
-    "tempmail.com", "throwawaymail.com", "guerrillamail.com", 
-    "sharklasers.com", "10minutemail.com", "mailinator.com"
-}
-
-
-def check_device_velocity(device_fingerprint: str) -> int:
-    """Sliding-window velocity counter using Redis ZSETs (O(log(N)) with local memory fallback."""
-    current_time = time.time()
-    cutoff_time = current_time - VELOCITY_WINDOW_SECONDS
-
-    if redis_client:
-        try:
-            key = f"velocity:device:{device_fingerprint}"
-            pipeline = redis_client.pipeline()
-            # 1. Prune older entries outside sliding window
-            pipeline.zremrangebyscore(key, 0, cutoff_time)
-            # 2. Add current transaction timestamp
-            pipeline.zadd(key, {str(current_time): current_time})
-            # 3. Count events in the active window
-            pipeline.zcard(key)
-            # 4. Set key TTL
-            pipeline.expire(key, VELOCITY_WINDOW_SECONDS + 10)
-            results = pipeline.execute()
-            return int(results[2])
-        except Exception:
-            pass
-
-    # Fallback to in-memory sliding window
-    timestamps = LOCAL_VELOCITY_CACHE[device_fingerprint]
-    valid_timestamps = [t for t in timestamps if t > cutoff_time]
-    valid_timestamps.append(current_time)
-    LOCAL_VELOCITY_CACHE[device_fingerprint] = valid_timestamps
-    return len(valid_timestamps)
-
-
-def lookup_ip_intelligence(ip_address: str) -> Dict[str, Any]:
-    known_tor_proxies = {"185.220.101.5", "192.42.116.16", "45.154.255.89"}
-    if ip_address in known_tor_proxies:
-        return {"is_vpn_or_proxy": True, "ip_risk_score": 95, "asn": "TOR-EXIT-NODE", "country": "RU"}
-    return {"is_vpn_or_proxy": False, "ip_risk_score": 10, "asn": "AIRTEL-BROADBAND-IN", "country": "IN"}
-
-
-class FastPathEngine:
-    @staticmethod
-    def evaluate(payload: TransactionPayload) -> FastPathResult:
-        anomalies: List[str] = []
-        base_score = 5
-
-        # 1. Disposable Email Check
-        email_domain = payload.customer_email.split("@")[-1].lower()
-        if email_domain in DISPOSABLE_DOMAINS:
-            anomalies.append(f"High-risk disposable email domain detected: @{email_domain}")
-            base_score += 45
-
-        # 2. Distributed Sliding Window Device Velocity Check
-        event_count = check_device_velocity(payload.device_fingerprint)
-        if event_count >= VELOCITY_THRESHOLD_COUNT:
-            anomalies.append(f"Device velocity spike: {event_count} orders in {VELOCITY_WINDOW_SECONDS}s")
-            base_score += 40
-
-        # 3. Address Mismatch Check
-        norm_shipping = "".join(payload.shipping_address.lower().split())
-        norm_billing = "".join(payload.billing_address.lower().split())
-        if norm_shipping != norm_billing:
-            anomalies.append("Shipping and billing addresses do not match")
-            base_score += 15
-
-        # 4. First-time COD High-Value Risk
-        if payload.is_cod and payload.historical_order_count == 0 and payload.amount > 5000:
-            anomalies.append("First-time customer high-value Cash on Delivery (RTO Risk)")
-            base_score += 25
-
-        if base_score <= 15 and not anomalies:
-            return FastPathResult(verdict=FastPathVerdict.CLEAN, heuristics_triggered=[], initial_score=5)
-        
-        return FastPathResult(
-            verdict=FastPathVerdict.NEEDS_DEEP_EVALUATION,
-            heuristics_triggered=anomalies,
-            initial_score=min(base_score, 100)
-        )
-
-
-class DeepAgentEvaluator:
-    @staticmethod
-    def evaluate(payload: TransactionPayload, fast_path: FastPathResult) -> RiskAssessmentResult:
-        score = fast_path.initial_score
-        anomalies = list(fast_path.heuristics_triggered)
-
-        ip_data = lookup_ip_intelligence(payload.ip_address)
-        if ip_data["is_vpn_or_proxy"]:
-            anomalies.append(f"Threat Intel: Originating IP is an active {ip_data['asn']} (IP Risk: {ip_data['ip_risk_score']}/100)")
-            score += 35
-
-        if payload.historical_order_count > 10:
-            score = max(0, score - 20)
-            reasoning_prefix = "Established customer history helps mitigate transaction anomalies."
-        else:
-            reasoning_prefix = "New customer profile increases risk exposure."
-
-        score = min(score, 100)
-
-        if score >= 75:
-            tier = RiskTier.BLOCK
-            reasoning = f"{reasoning_prefix} Multiple severe fraud indicators identified: {'; '.join(anomalies)}."
-        elif score >= 35:
-            tier = RiskTier.STEP_UP_OTP
-            reasoning = f"{reasoning_prefix} Moderate risk detected requiring two-factor verification: {'; '.join(anomalies)}."
-        else:
-            tier = RiskTier.ALLOW
-            reasoning = "Transaction falls within acceptable variance limits."
-
-        return RiskAssessmentResult(
-            transaction_id=payload.transaction_id,
-            risk_tier=tier,
-            risk_score=score,
-            detected_anomalies=anomalies,
-            plain_text_reasoning=reasoning,
-            confidence_score=0.95
-        )
-
+    def predict_anomaly_score(self, amount: float, velocity: int, history: int, is_cod: int) -> float:
+        """Returns anomaly score normalized from 0 (normal) to 100 (severe outlier)."""
+        features = np.array([[amount, velocity, history, is_cod]])
+        raw_score = self.model.score_samples(features)[0] # negative values: more anomalous
+        # Normalize typical Isolation Forest output (-0.8 to -0.3) to 0-100 scale
+        normalized = float(np.clip(((-raw_score - 0.35) / 0.45) * 100, 0, 100))
+        return round(normalized, 2)
 
 class ShieldFlowEngine:
-    @staticmethod
-    def process_transaction(payload: TransactionPayload) -> Tuple[RiskAssessmentResult, str, float]:
-        start_time = time.perf_counter()
-        
-        fast_path = FastPathEngine.evaluate(payload)
-        
-        if fast_path.verdict == FastPathVerdict.CLEAN:
-            elapsed_ms = (time.perf_counter() - start_time) * 1000
-            result = RiskAssessmentResult(
-                transaction_id=payload.transaction_id,
-                risk_tier=RiskTier.ALLOW,
-                risk_score=fast_path.initial_score,
-                detected_anomalies=[],
-                plain_text_reasoning="Fast-path clearance: No identity, velocity, or geolocation anomalies.",
-                confidence_score=0.99
-            )
-            return result, "Tier 1: Fast-Path Heuristics", elapsed_ms
+    DISPOSABLE_DOMAINS = {
+        "tempmail.com", "throwawaymail.com", "guerrillamail.com", 
+        "10minutemail.com", "disposable-inbox.com", "sharklasers.com"
+    }
+    DATACENTER_IP_PREFIXES = ["104.", "198.", "185.", "45."]
 
-        result = DeepAgentEvaluator.evaluate(payload, fast_path)
-        elapsed_ms = (time.perf_counter() - start_time) * 1000
-        return result, "Tier 2: Deep Agent Evaluator", elapsed_ms
+    def __init__(self):
+        self.ml_model = MLAnomalyDetector()
+
+    def evaluate(self, payload: Dict[str, Any], velocity_count: int = 1) -> Dict[str, Any]:
+        start_time = time.perf_counter()
+        breakdown: List[Dict[str, Any]] = []
+        total_risk_score = 0
+
+        # Heuristic 1: Disposable Email Detection
+        email = payload.get("customer_email", "").lower()
+        domain = email.split("@")[-1] if "@" in email else ""
+        if domain in self.DISPOSABLE_DOMAINS:
+            pts = 40
+            total_risk_score += pts
+            breakdown.append({"factor": "Disposable Email Domain", "weight": f"+{pts} pts", "severity": "HIGH"})
+
+        # Heuristic 2: Datacenter / TOR Node Proxy
+        ip = payload.get("ip_address", "")
+        if any(ip.startswith(prefix) for prefix in self.DATACENTER_IP_PREFIXES):
+            pts = 30
+            total_risk_score += pts
+            breakdown.append({"factor": "Datacenter / TOR Exit Node ASN", "weight": f"+{pts} pts", "severity": "HIGH"})
+
+        # Heuristic 3: Sliding Window Velocity Spike
+        if velocity_count > 3:
+            pts = min(velocity_count * 8, 35)
+            total_risk_score += pts
+            breakdown.append({"factor": f"Velocity Surge ({velocity_count} tx / 60s)", "weight": f"+{pts} pts", "severity": "MEDIUM"})
+
+        # ML Anomaly Inference
+        amount = float(payload.get("amount", 0))
+        history = int(payload.get("historical_orders", 0))
+        is_cod = 1 if payload.get("is_cod", False) else 0
+
+        ml_score = self.ml_model.predict_anomaly_score(amount, velocity_count, history, is_cod)
+        if ml_score > 60:
+            pts = int(ml_score * 0.3)
+            total_risk_score += pts
+            breakdown.append({"factor": f"ML Outlier Isolation Index ({ml_score}/100)", "weight": f"+{pts} pts", "severity": "HIGH"})
+
+        # Address Consistency Check
+        shipping = payload.get("shipping_address", "").strip().lower()
+        billing = payload.get("billing_address", "").strip().lower()
+        if shipping and billing and shipping != billing:
+            pts = 15
+            total_risk_score += pts
+            breakdown.append({"factor": "Billing / Shipping Mismatch", "weight": f"+{pts} pts", "severity": "LOW"})
+
+        # Final Decision Tier
+        final_score = min(total_risk_score, 100)
+        if final_score >= 70:
+            tier = "BLOCK"
+            action = "AUTO_REFUND_EXECUTED"
+        elif final_score >= 35:
+            tier = "MANUAL_REVIEW"
+            action = "HELD_FOR_ANALYST_QUEUE"
+        else:
+            tier = "ALLOW"
+            action = "APPROVED_INSTANT"
+
+        latency_ms = (time.perf_counter() - start_time) * 1000
+
+        return {
+            "transaction_id": payload.get("transaction_id"),
+            "risk_score": final_score,
+            "risk_tier": tier,
+            "recommended_action": action,
+            "ml_anomaly_score": ml_score,
+            "risk_breakdown": breakdown,
+            "latency_ms": round(latency_ms, 2)
+        }
