@@ -1,24 +1,24 @@
-# ShieldFlow AI 🛡️
-> Sub-10ms Real-Time Payment Risk Decisioning & Fraud Mitigation Gateway
+# 🛡️ ShieldFlow AI — Real-Time Payment Risk & Fraud Mitigation Engine
 
-[![CI/CD Pipeline](https://github.com/suhanikri/shieldflow-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/suhanikri/shieldflow-ai/actions)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg)](https://fastapi.tiangolo.com/)
-[![Next.js](https://img.shields.io/badge/Next.js-15-black.svg)](https://nextjs.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![ShieldFlow AI CI Pipeline](https://img.shields.io/badge/ShieldFlow_AI_CI_Pipeline-passing-brightgreen?logo=github)](https://github.com/suhanikri/shieldflow-ai/actions)
+[![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI 0.110](https://img.shields.io/badge/FastAPI-0.110-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Docker Enabled](https://img.shields.io/badge/Docker-Enabled-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Redis Rate Limiting](https://img.shields.io/badge/Redis-Rate_Limiting-DC382D?logo=redis&logoColor=white)](https://redis.io/)
+[![Prometheus Telemetry](https://img.shields.io/badge/Prometheus-Telemetry-E6522C?logo=prometheus&logoColor=white)](https://prometheus.io/)
 
 ---
 
 ## ⚡ Overview
 
-ShieldFlow AI is a high-throughput, low-latency risk evaluation gateway built for high-volume payment ecosystems like Razorpay and Stripe.
+**ShieldFlow AI** is a high-throughput, low-latency risk evaluation gateway built for modern fintech payment ecosystems (such as Razorpay and Stripe).
 
-In payment processing, deep neural networks introduce latency bottlenecks that cause checkout drop-offs, while basic rule engines generate high false-positive decline rates. ShieldFlow AI bridges this gap with a hybrid decisioning pipeline:
+In digital payments, traditional rule engines miss sophisticated fraud patterns, while deep learning architectures introduce latency bottlenecks that increase customer checkout drop-off. ShieldFlow AI bridges this gap with a **hybrid decisioning pipeline**:
 
-1. **Cryptographic Validation:** Instant HMAC SHA-256 webhook signature verification.
+1. **Cryptographic Verification:** Sub-millisecond HMAC SHA-256 webhook authentication.
 2. **Fast-Path Caching Layer:** Redis sliding-window velocity counters enforcing rate bounds in `< 2ms`.
-3. **Dual-Stage ML & Heuristic Engine:** Unsupervised Isolation Forest Anomaly Detection combined with deterministic filters.
-4. **Human-in-the-Loop (HITL) Desk:** Borderline transactions (scores 35–69) are flagged to an analyst operations desk with SQLite audit persistence.
+3. **Dual-Stage ML & Heuristics:** Unsupervised **Isolation Forest Anomaly Detection** combined with deterministic security checks (disposable domains, datacenter proxy ASNs, COD anomalies).
+4. **Human-in-the-Loop (HITL) Operations:** Borderline transactions (scores 35–69) are routed to an analyst review desk with persistent SQLite audit trails.
 
 ---
 
@@ -50,13 +50,13 @@ flowchart TD
 
 ## 🚀 Key Features
 
-* **Sub-10ms Roundtrip Inference:** Optimized execution pipeline ensuring minimal checkout overhead.
-* **Cryptographic Payload Verification:** Validates webhook signatures against symmetric API secrets.
-* **Unsupervised Anomaly Scoring:** Scikit-Learn Isolation Forest detects statistical outliers.
-* **Granular Explainability:** Quantified, SHAP-style risk attribution weights returned with every payload.
-* **Analyst Ops Console:** Interactive Streamlit dashboard for real-time payload testing and overrides.
-* **Real-Time Telemetry Dashboard:** Next.js + Tailwind CSS UI with continuous webhook simulation.
-* **CI/CD Reliability:** GitHub Actions pipeline running automated Pytest suites against live Redis test containers.
+* **Sub-10ms Inference Latency:** Optimized execution pipeline ensuring minimal checkout overhead.
+* **Cryptographic Payload Verification:** Validates incoming webhook signatures against symmetric API secrets.
+* **Unsupervised Anomaly Detection:** Scikit-Learn Isolation Forest detects statistical outliers across multi-dimensional feature spaces.
+* **Granular Explainability:** Quantified, SHAP-style risk attribution weights returned with every payload evaluation.
+* **Analyst Ops Console:** Interactive Streamlit dashboard for manual overrides, payload evaluation, and database queries.
+* **Real-Time Telemetry Dashboard:** Next.js + Tailwind CSS interface with live continuous webhook simulations.
+* **Automated CI/CD:** GitHub Actions test pipeline verifying Pytest suites against live Redis service containers.
 
 ---
 
@@ -98,13 +98,13 @@ pip install -r requirements.txt
 ```bash
 uvicorn api:app --reload --port 8000
 ```
-Interactive API Documentation (Swagger UI): `http://localhost:8000/docs`
+*Interactive API Documentation (Swagger UI): `http://localhost:8000/docs`*
 
 ### 4. Launch the Streamlit Analyst Ops Desk
 ```bash
 streamlit run app.py
 ```
-Operations Desk: `http://localhost:8501`
+*Operations Desk: `http://localhost:8501`*
 
 ### 5. Launch the Next.js Telemetry Dashboard
 ```bash
@@ -112,7 +112,7 @@ cd frontend
 npm install
 npm run dev
 ```
-Telemetry Dashboard: `http://localhost:3000`
+*Telemetry Dashboard: `http://localhost:3000`*
 
 ---
 
@@ -131,4 +131,4 @@ python simulate_webhook.py
 ---
 
 ## 📄 License
-This project is open-source and licensed under the MIT License.
+This project is open-source and licensed under the [MIT License](LICENSE).
