@@ -1,69 +1,134 @@
-# 🛡️ ShieldFlow AI — Real-Time Payment Risk & Fraud Mitigation Engine
+# ShieldFlow AI 🛡️
+> Sub-10ms Real-Time Payment Risk Decisioning & Fraud Mitigation Gateway
 
-[![ShieldFlow AI CI Pipeline](https://github.com/suhanikri/shieldflow-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/suhanikri/shieldflow-ai/actions/workflows/ci.yml)
-![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.110-009688?logo=fastapi&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?logo=docker&logoColor=white)
-![Redis](https://img.shields.io/badge/Redis-Rate%20Limiting-DC382D?logo=redis&logoColor=white)
-![Prometheus](https://img.shields.io/badge/Prometheus-Telemetry-E6522C?logo=prometheus&logoColor=white)
+[![CI/CD Pipeline](https://github.com/suhanikri/shieldflow-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/suhanikri/shieldflow-ai/actions)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg)](https://fastapi.tiangolo.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-15-black.svg)](https://nextjs.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-ShieldFlow AI is an ultra-low latency, production-grade fraud detection gateway designed to inspect inbound payment webhooks (Razorpay, Stripe) in real time. It features a two-tier evaluation architecture combining deterministic sub-10ms heuristics with deep threat intelligence agent workflows, backed by a human-in-the-loop (HITL) manual review console.
+---
+
+## ⚡ Overview
+
+ShieldFlow AI is a high-throughput, low-latency risk evaluation gateway built for high-volume payment ecosystems like Razorpay and Stripe.
+
+In payment processing, deep neural networks introduce latency bottlenecks that cause checkout drop-offs, while basic rule engines generate high false-positive decline rates. ShieldFlow AI bridges this gap with a hybrid decisioning pipeline:
+
+1. **Cryptographic Validation:** Instant HMAC SHA-256 webhook signature verification.
+2. **Fast-Path Caching Layer:** Redis sliding-window velocity counters enforcing rate bounds in `< 2ms`.
+3. **Dual-Stage ML & Heuristic Engine:** Unsupervised Isolation Forest Anomaly Detection combined with deterministic filters.
+4. **Human-in-the-Loop (HITL) Desk:** Borderline transactions (scores 35–69) are flagged to an analyst operations desk with SQLite audit persistence.
 
 ---
 
 ## 🏛️ System Architecture
 
-* **Inbound Ingestion:** FastAPI gateway verifying Razorpay & Stripe webhooks via cryptographic HMAC SHA-256 signatures.
-* **Tier 1 (Fast-Path Rules):** Sub-10ms evaluation checking Redis sliding-window velocity limits, purchase frequency, and address consistency.
-* **Tier 2 (Deep Risk Intelligence):** Evaluates disposable email patterns, IP proxy/TOR exit nodes, and Cash-on-Delivery (COD) anomalies.
-* **Audit & Storage:** SQLite/SQLAlchemy persistent transaction ledger storing latencies, risk scores, and reasons.
-* **Observability & Ops:** Standard Prometheus `/metrics` telemetry alongside a Streamlit Human-in-the-Loop review console.
+```mermaid
+flowchart TD
+    A[Inbound Webhook Payload] --> B[HMAC SHA-256 Signature Verification]
+    B --> C[Fast-Path Redis Velocity Check]
+    
+    C -- Velocity Exceeded --> D[Instant BLOCK]
+    C -- Velocity Normal --> E[Hybrid Decision Engine]
+    
+    E --> F[ML Anomaly Isolation Forest]
+    E --> G[Deterministic Heuristics]
+    
+    F & G --> H{Risk Tier Evaluation}
+    
+    H -- "Score < 35" --> I[ALLOW: Instant Capture]
+    H -- "Score 35-69" --> J[MANUAL REVIEW: Streamlit Analyst Desk]
+    H -- "Score >= 70" --> K[BLOCK: Auto-Refund Triggered]
+    
+    J --> L[(SQLite Audit Ledger)]
+    I --> L
+    K --> L
+```
 
 ---
 
 ## 🚀 Key Features
 
-* **Sub-10ms Fast-Path Heuristics:** Evaluates velocity spikes, address consistency, and purchase history.
-* **Distributed Rate Limiting:** Sliding-window rate limiting backed by Redis sorted sets.
-* **Cryptographic Security:** End-to-end HMAC SHA-256 payload authentication.
-* **Human-in-the-Loop (HITL) Queue:** Streamlit operations desk allowing risk analysts to override flagged transactions with persistent audit logs.
-* **Observability:** Native Prometheus instrumentation streaming throughput, latency percentiles, and risk distributions.
-* **Multi-Container Architecture:** Production-ready orchestration with Docker and Docker Compose.
+* **Sub-10ms Roundtrip Inference:** Optimized execution pipeline ensuring minimal checkout overhead.
+* **Cryptographic Payload Verification:** Validates webhook signatures against symmetric API secrets.
+* **Unsupervised Anomaly Scoring:** Scikit-Learn Isolation Forest detects statistical outliers.
+* **Granular Explainability:** Quantified, SHAP-style risk attribution weights returned with every payload.
+* **Analyst Ops Console:** Interactive Streamlit dashboard for real-time payload testing and overrides.
+* **Real-Time Telemetry Dashboard:** Next.js + Tailwind CSS UI with continuous webhook simulation.
+* **CI/CD Reliability:** GitHub Actions pipeline running automated Pytest suites against live Redis test containers.
 
 ---
 
-## 🛠️ Quickstart with Docker Compose
+## 🛠️ Tech Stack
 
-**1. Prerequisites**
-* Docker Desktop installed and running.
-* Git
-
-**2. Launch Stack**
-> `git clone https://github.com/suhanikri/shieldflow-ai.git`  
-> `cd shieldflow-ai`  
-> `docker compose up --build -d`  
-
-**3. Service Endpoints**
-* **Analyst Operations Console:** http://localhost:8501
-* **FastAPI Swagger Documentation:** http://localhost:8000/docs
-* **Prometheus Metrics:** http://localhost:8000/metrics
-* **Health Check:** http://localhost:8000/health
+* **Backend Engine:** Python 3.11, FastAPI, Uvicorn, Pydantic v2
+* **Machine Learning:** Scikit-Learn (Isolation Forest), NumPy
+* **Fast-Path Storage & Caching:** Redis (Sliding-window counters)
+* **Persistent Storage:** SQLite3 (Audit logs, Analyst states)
+* **Analyst Console:** Streamlit
+* **Telemetry Dashboard:** Next.js 15, React 19, Tailwind CSS, Lucide Icons
+* **Testing & CI:** Pytest, HTTPX, GitHub Actions, Docker Compose
 
 ---
 
-## 🧪 Running Automated Tests
+## 💻 Local Setup & Installation
 
-Run the test suite locally:
-> `pytest -v test_shieldflow.py`
+### 1. Clone the Repository
+```bash
+git clone https://github.com/suhanikri/shieldflow-ai.git
+cd shieldflow-ai
+```
+
+### 2. Configure Backend Virtual Environment
+```bash
+python -m venv venv
+```
+
+**Activate Environment:**
+* Windows (PowerShell): `.\venv\Scripts\Activate.ps1`
+* Linux / macOS: `source venv/bin/activate`
+
+**Install dependencies:**
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Launch the Backend API
+```bash
+uvicorn api:app --reload --port 8000
+```
+Interactive API Documentation (Swagger UI): `http://localhost:8000/docs`
+
+### 4. Launch the Streamlit Analyst Ops Desk
+```bash
+streamlit run app.py
+```
+Operations Desk: `http://localhost:8501`
+
+### 5. Launch the Next.js Telemetry Dashboard
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Telemetry Dashboard: `http://localhost:3000`
 
 ---
 
-## 📋 API Specification
+## 🧪 Testing & Simulation
 
-### POST /webhook/razorpay
+### Run Automated Unit Tests
+```bash
+pytest -v test_shieldflow.py
+```
 
-Ingests and verifies signed payment gateway webhooks.
+### Run Live Continuous Traffic Daemon
+```bash
+python simulate_webhook.py
+```
 
-* **Header:** `X-Razorpay-Signature` (HMAC SHA-256 hex digest)
-* **Risk Tiers:** `ALLOW`, `MANUAL_REVIEW`, `BLOCK`
-* **Features Inspected:** Velocity limits, disposable email detection, IP proxy/TOR identification, and address consistency.
+---
+
+## 📄 License
+This project is open-source and licensed under the MIT License.
